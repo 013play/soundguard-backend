@@ -77,9 +77,12 @@ app.post('/create-payment', async (req, res) => {
         last_name: 'SoundGuard', // Opcional, mas recomendado
       },
     };
+    
 
     const result = await payment.create({ body: payment_data });
 
+    console.log(result)
+    
     // O 'result' aqui deve conter o objeto 'point_of_interaction'
     res.json(result); 
 
