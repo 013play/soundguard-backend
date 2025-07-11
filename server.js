@@ -15,6 +15,9 @@ const client = new MercadoPagoConfig({
   }
 });
 
+// CORREÇÃO: Criar a instância do Payment aqui, fora das rotas
+const payment = new Payment(client);
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -37,29 +40,26 @@ app.post('/webhook/mercadopago', async (req, res) => {
 
     if (topic === 'payment' && paymentId) {
       
-      // Nova forma de buscar o pagamento usando o cliente
-      const payment = new Payment(client);
+      // Agora usamos a instância global do payment
       const paymentDetails = await payment.get({ id: paymentId });
 
       console.log(`Detalhes do Pagamento ${paymentId}:`, {
         status: paymentDetails.status,
         amount: paymentDetails.transaction_amount,
         email: paymentDetails.payer.email,
-        external_reference: paymentDetails.external_reference // Muito útil para identificar o pedido!
+        external_reference: paymentDetails.external_reference
       });
       
       if (paymentDetails.status === 'approved') {
-        // Chame sua função para processar o pagamento aprovado
         await processApprovedPayment(paymentDetails);
       }
     }
     
-    // Responda SEMPRE com 200 OK para o MercadoPago
     res.status(200).send('OK');
 
   } catch (error) {
     console.error('Erro no webhook:', error.message);
-    res.status(200).send('OK'); // Importante: mesmo com erro, responda 200
+    res.status(200).send('OK');
   }
 });
 
@@ -68,26 +68,24 @@ app.post('/create-payment', async (req, res) => {
     const { amount, description, user_email } = req.body;
 
     const payment_data = {
-      transaction_amount: amount,
+      transaction_amount: parseFloat(amount),
       description: description,
-      payment_method_id: 'pix', // ESSA LINHA É CRUCIAL!
+      payment_method_id: 'pix',
       payer: {
-        email: user_email,
-        first_name: 'Usuario', // Opcional, mas recomendado
-        last_name: 'SoundGuard', // Opcional, mas recomendado
+        email: user_email || 'usuario@soundguard.com',
+        first_name: 'Usuario',
+        last_name: 'SoundGuard',
       },
     };
     
+    // Agora a variável 'payment' está definida e pode ser usada
+    const result = await payment.create({ body: payment_data });
 
-    const result = await Payment.create({ body: payment_data });
-
-    console.log(result)
+    console.log('Pagamento criado com sucesso:', result);
     
-    // O 'result' aqui deve conter o objeto 'point_of_interaction'
     res.json(result); 
 
   } catch (error) {
-    // Isso ajuda a ver o erro exato nos logs da Railway
     console.error('Erro ao criar pagamento no MercadoPago:', error);
     res.status(500).json({ 
         error: 'Falha ao criar pagamento',
@@ -95,17 +93,13 @@ app.post('/create-payment', async (req, res) => {
     });
   }
 });
+
 // Rota para verificar status do pagamento
 app.get('/payment-status/:id', async (req, res) => {
   try {
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${req.params.id}`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-      }
-    });
-
-    const paymentData = await response.json();
-    res.json(paymentData);
+    // Usando a instância global do payment
+    const paymentDetails = await payment.get({ id: req.params.id });
+    res.json(paymentDetails);
   } catch (error) {
     console.error('Erro ao verificar pagamento:', error);
     res.status(500).json({ error: 'Erro interno' });
