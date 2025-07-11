@@ -63,6 +63,54 @@ app.post('/webhook/mercadopago', async (req, res) => {
   }
 });
 
+// Rota para criar pagamento PIX
+app.post('/create-payment', async (req, res) => {
+  try {
+    const { amount, description, user_email } = req.body;
+    
+    const payment = {
+      transaction_amount: amount,
+      description: description,
+      payment_method_id: 'pix',
+      payer: {
+        email: user_email,
+      },
+    };
+
+    const response = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(payment)
+    });
+
+    const paymentData = await response.json();
+    res.json(paymentData);
+  } catch (error) {
+    console.error('Erro ao criar pagamento:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+// Rota para verificar status do pagamento
+app.get('/payment-status/:id', async (req, res) => {
+  try {
+    const response = await fetch(`https://api.mercadopago.com/v1/payments/${req.params.id}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`,
+      }
+    });
+
+    const paymentData = await response.json();
+    res.json(paymentData);
+  } catch (error) {
+    console.error('Erro ao verificar pagamento:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 async function processApprovedPayment(paymentDetails) {
   console.log('✅ Pagamento APROVADO! Processando lógica de negócio para:', paymentDetails.id);
   
