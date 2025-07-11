@@ -79,7 +79,7 @@ app.post('/create-payment', async (req, res) => {
     };
     
 
-    const result = await payment.create({ body: payment_data });
+    const result = await Payment.create({ body: payment_data });
 
     console.log(result)
     
