@@ -62,6 +62,7 @@ app.post('/webhook/mercadopago', async (req, res) => {
     res.status(200).send('OK'); // Importante: mesmo com erro, responda 200
   }
 });
+
 app.post('/create-payment', async (req, res) => {
   try {
     const { amount, description, user_email } = req.body;
