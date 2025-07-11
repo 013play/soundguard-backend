@@ -62,38 +62,35 @@ app.post('/webhook/mercadopago', async (req, res) => {
     res.status(200).send('OK'); // Importante: mesmo com erro, responda 200
   }
 });
-
-// Rota para criar pagamento PIX
 app.post('/create-payment', async (req, res) => {
   try {
     const { amount, description, user_email } = req.body;
-    
-    const payment = {
+
+    const payment_data = {
       transaction_amount: amount,
       description: description,
-      payment_method_id: 'pix',
+      payment_method_id: 'pix', // ESSA LINHA É CRUCIAL!
       payer: {
         email: user_email,
+        first_name: 'Usuario', // Opcional, mas recomendado
+        last_name: 'SoundGuard', // Opcional, mas recomendado
       },
     };
 
-    const response = await fetch('https://api.mercadopago.com/v1/payments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify(payment)
-    });
+    const result = await payment.create({ body: payment_data });
 
-    const paymentData = await response.json();
-    res.json(paymentData);
+    // O 'result' aqui deve conter o objeto 'point_of_interaction'
+    res.json(result); 
+
   } catch (error) {
-    console.error('Erro ao criar pagamento:', error);
-    res.status(500).json({ error: 'Erro interno' });
+    // Isso ajuda a ver o erro exato nos logs da Railway
+    console.error('Erro ao criar pagamento no MercadoPago:', error);
+    res.status(500).json({ 
+        error: 'Falha ao criar pagamento',
+        details: error.message 
+    });
   }
 });
-
 // Rota para verificar status do pagamento
 app.get('/payment-status/:id', async (req, res) => {
   try {
